@@ -1,3 +1,0 @@
-install_targets:
-  - target: example
-    type: executable

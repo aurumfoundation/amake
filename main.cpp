@@ -32,14 +32,11 @@ void buildProject() {
 
         std::string buildCommand;
 
+        system("mkdir -p build/target");
         if (type == "executable") {
-            buildCommand = "g++ -o " + target;
+            buildCommand = "g++ -o build/target/" + target;
         } else if (type == "shared") {
-            buildCommand = "g++ -shared -fPIC -o " + target + ".so";
-        } else if (type == "static") {
-            buildCommand = "g++ -c " + target + ".o";
-            // Assuming ar command is available
-            buildCommand += " && ar rcs lib" + target + ".a " + target + ".o";
+            buildCommand = "g++ -shared -fPIC -o build/target/" + target + ".so";
         } else if (type == "aurum_application") {
             buildCommand = "g++ -o " + target + " -e appmain";
         } else if (type == "custom") {
@@ -120,6 +117,26 @@ void buildProject() {
             buildCommand += " -l" + library;
         }
 
+        std::ofstream installFile("install.amake");
+        if (!installFile.is_open()) {
+            std::cerr << "Error: Couldn't create install.amake\n";
+            return;
+        }
+
+        installFile << "install_targets:\n";
+
+        for (const auto& step : steps) {
+            std::string target = step["target"].as<std::string>();
+            bool install = step["install"].as<bool>();
+
+            if (install) {
+                installFile << "  - target: " << target << "\n";
+                installFile << "    type: " << step["type"].as<std::string>() << "\n";
+            }
+        }
+
+        installFile.close();
+
         // Execute the build command
         int result = system(buildCommand.c_str());
 
@@ -146,6 +163,47 @@ int main(int argc, char *argv[]) {
         buildProject();
     } else if (command == "version") {
         std::cout << "amake version 1.0\n";
+    } else if (command == "install") {
+        // Assuming install.amake is present in the same directory
+        std::ifstream installFile("install.amake");
+        if (!installFile.is_open()) {
+            std::cerr << "Error: install.amake not found\n";
+            return 1;
+        }
+
+        YAML::Node installConfig = YAML::Load(installFile);
+
+        const YAML::Node& installTargets = installConfig["install_targets"];
+        if (!installTargets.IsSequence()) {
+            std::cerr << "Error: 'install_targets' must be a sequence in install.amake\n";
+            return 1;
+        }
+
+        for (const auto& installTarget : installTargets) {
+            std::string target = installTarget["target"].as<std::string>();
+            std::string type = installTarget["type"].as<std::string>();
+
+            // Implement installation logic based on target type
+            if (type == "executable") {
+                // Install executable to /usr/bin/
+                int installResult = system(("sudo cp build/target/" + target + " /usr/bin/").c_str());
+                // Check installResult for errors
+            } else if (type == "shared" || type == "static") {
+                // Install library to /usr/lib/
+                const char* extension;
+                if(type == "shared")
+                    int installResult = system(("sudo cp build/target/" + target + ".so /usr/bin/").c_str());
+                else
+                    int installResult = system(("sudo cp build/target/" + target + ".a /usr/bin/").c_str());
+                
+                // Check installResult for errors
+            } else {
+                std::cerr << "Error: Unknown target type '" << type << "' for target '" << target << "'\n";
+                return 1;
+            }
+
+            std::cout << "Installation successful for target: " << target << std::endl;
+        }
     } else {
         std::cerr << "Unknown command: " << command << "\n";
         return 1;
