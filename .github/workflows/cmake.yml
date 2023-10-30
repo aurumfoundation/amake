@@ -42,6 +42,10 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: aMake-installer
-        path: ${{github.workspace}}/build/*
+        name: aMake-installer_${{matrix.package_types}}
+        path: |
+          ${{github.workspace}}/build/*.deb
+          ${{github.workspace}}/build/*.rpm
+          ${{github.workspace}}/build/*.tar.gz
+
         
