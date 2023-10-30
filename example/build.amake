@@ -1,0 +1,7 @@
+# build.amake
+steps:
+  - target: example
+    type: executable
+    sources:
+      - main.cpp
+    libraries:
