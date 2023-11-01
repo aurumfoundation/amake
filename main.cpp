@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <iterator>
 
 /// Build project function
 void buildProject() {
