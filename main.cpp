@@ -3,36 +3,32 @@
 #include <sstream>
 #include <vector>
 
-// Function to split a string by space
-std::vector<std::string> split(const std::string& s) {
-    std::istringstream iss(s);
-    return {std::istream_iterator<std::string>{iss},
-            std::istream_iterator<std::string>{}};
-}
-
-// Function to build project using custom syntax
+/// Build project function
 void buildProject() {
-    std::cout << "Building project using amakefile\n";
+    std::cout << "Building project using build.amake\n";
 
-    // Read amakefile
-    std::ifstream build_file("amakefile");
+    // Read build.amake
+    std::ifstream build_file("build.amake");
     if (!build_file.is_open()) {
-        std::cerr << "Error: Couldn't open amakefile\n";
+        std::cerr << "Error: Couldn't open build.amake\n";
         return;
     }
 
-    // Parse amakefile
-    std::vector<std::string> buildConfig;
-    for (std::string line; getline(build_file, line); ) {
-        buildConfig.push_back(line);
+    // Parse custom build syntax
+    std::string line;
+    std::vector<std::string> buildLines;
+    while (std::getline(build_file, line)) {
+        buildLines.push_back(line);
     }
 
-    for (const auto& step : buildConfig) {
-        // Split the step by space
-        std::vector<std::string> tokens = split(step);
+    // Extract build steps
+    for (const auto& step : buildLines) {
+        std::istringstream iss(step);
+        std::vector<std::string> tokens(std::istream_iterator<std::string>{iss},
+                                        std::istream_iterator<std::string>());
 
         if (tokens.empty()) {
-            continue;
+            continue; // Ignore empty lines
         }
 
         std::string target = tokens[0];
@@ -58,7 +54,7 @@ void buildProject() {
             return;
         }
 
-        // Assuming the rest of the tokens are sources and libraries
+        // Assuming the rest are source files and libraries
         for (size_t i = 2; i < tokens.size(); ++i) {
             buildCommand += " " + tokens[i];
         }
@@ -73,9 +69,10 @@ void buildProject() {
 
         std::cout << "Build successful for target: " << target << std::endl;
     }
+
+    // Add overall build logic if needed
 }
 
-// Function to install project using custom syntax
 void installProject() {
     std::ifstream installFile("install.amake");
     if (!installFile.is_open()) {
@@ -83,18 +80,21 @@ void installProject() {
         return;
     }
 
-    std::vector<std::string> installConfig;
-    for (std::string line; getline(installFile, line); ) {
-        installConfig.push_back(line);
+    // Parse custom install syntax
+    std::string line;
+    std::vector<std::string> installLines;
+    while (std::getline(installFile, line)) {
+        installLines.push_back(line);
     }
 
-    for (const auto& installTarget : installConfig) {
-        // Split the install target by space
-        std::vector<std::string> tokens = split(installTarget);
+    // Extract install targets
+    for (const auto& installTarget : installLines) {
+        std::istringstream iss(installTarget);
+        std::vector<std::string> tokens(std::istream_iterator<std::string>{iss},
+                                        std::istream_iterator<std::string>());
 
-        if (tokens.size() < 3) {
-            std::cerr << "Error: Invalid install target format\n";
-            return;
+        if (tokens.size() < 3 || tokens[0] != "install" || tokens[1] != "target:") {
+            continue; // Ignore invalid lines
         }
 
         std::string target = tokens[2];
@@ -107,13 +107,8 @@ void installProject() {
             // Check installResult for errors
         } else if (type == "shared" || type == "static") {
             // Install library to /usr/lib/
-            const char* extension;
-            if (type == "shared") {
-                int installResult = system(("sudo cp build/target/" + target + ".so /usr/bin/").c_str());
-            } else {
-                int installResult = system(("sudo cp build/target/" + target + ".a /usr/bin/").c_str());
-            }
-
+            const char* extension = (type == "shared") ? ".so" : ".a";
+            int installResult = system(("sudo cp build/target/" + target + extension + " /usr/bin/").c_str());
             // Check installResult for errors
         } else {
             std::cerr << "Error: Unknown target type '" << type << "' for target '" << target << "'\n";
@@ -146,4 +141,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
